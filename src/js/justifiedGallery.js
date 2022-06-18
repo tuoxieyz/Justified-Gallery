@@ -193,24 +193,24 @@ JustifiedGallery.prototype.displayEntry = function ($entry, x, y, imgWidth, imgH
       imageSrc = this.newSrc(imageSrc, imgWidth, imgHeight, $image[0]);
 
       $image.one('error', function () {
-         this.resetImgSrc($image); //revert to the original thumbnail
+        this.resetImgSrc($image); //revert to the original thumbnail
       });
 
       var loadNewImage = function () {
         // if (imageSrc !== newImageSrc) { 
-          $image.attr('src', imageSrc);
+        $image.attr('src', imageSrc);
         // }
       };
 
       if ($entry.data('jg.loaded') === 'skipped' && imageSrc) {
-        this.onImageEvent(imageSrc, (function() {
+        this.onImageEvent(imageSrc, (function () {
           this.showImg($entry, loadNewImage); //load the new image after the fadeIn
           $entry.data('jg.loaded', true);
         }).bind(this));
       } else {
         this.showImg($entry, loadNewImage); //load the new image after the fadeIn
       }
-    
+
     }
 
   } else {
@@ -271,7 +271,7 @@ JustifiedGallery.prototype.isValidCaption = function (caption) {
 JustifiedGallery.prototype.onEntryMouseEnterForCaption = function (eventObject) {
   var $caption = this.captionFromEntry($(eventObject.currentTarget));
   if (this.settings.cssAnimation) {
-    $caption.addClass('jg-caption-visible').removeClass('jg-caption-hidden');
+    $caption.addClass('jg-caption-visible');
   } else {
     $caption.stop().fadeTo(this.settings.captionSettings.animationDuration,
       this.settings.captionSettings.visibleOpacity);
@@ -287,7 +287,7 @@ JustifiedGallery.prototype.onEntryMouseEnterForCaption = function (eventObject) 
 JustifiedGallery.prototype.onEntryMouseLeaveForCaption = function (eventObject) {
   var $caption = this.captionFromEntry($(eventObject.currentTarget));
   if (this.settings.cssAnimation) {
-    $caption.removeClass('jg-caption-visible').removeClass('jg-caption-hidden');
+    $caption.removeClass('jg-caption-visible');
   } else {
     $caption.stop().fadeTo(this.settings.captionSettings.animationDuration,
       this.settings.captionSettings.nonVisibleOpacity);
@@ -803,7 +803,7 @@ JustifiedGallery.prototype.analyzeImages = function (isForResize) {
   this.stopImgAnalyzerStarter();
 
   this.setGalleryFinalHeight(this.galleryHeightToSet);
-  
+
   //On complete callback
   this.settings.triggerEvent.call(this, isForResize ? 'jg.resize' : 'jg.complete');
 };
