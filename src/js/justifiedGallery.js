@@ -834,17 +834,18 @@ JustifiedGallery.prototype.init = function () {
   if (!imagesToLoad && !skippedImages) this.startImgAnalyzer(false);
   this.checkWidth();
 
-  if (this.settings.captions) {
+  if (this.settings.fnCaptionContent) {
     // 第 2 个参数并不会导致在每个 a 上注册事件；事件只注册在父元素上，可减少内存损耗
     this.$gallery.on('mouseenter', 'a', evt => { // 'a > img'        
-      let a = evt.currentTarget, $img = $(a).children('img');
-      if ($img.length > 0) {
-        let img = $img[0];
-        let $caption = $img.next('.jg-caption');
+      let a = evt.currentTarget;
+      let content = this.settings.fnCaptionContent(a);
+      if (content) {
+        let $img = $(a).children('img'), $caption = $img.next('.jg-caption');
         if ($caption.length == 0) {
-          $caption = $(`<div class="jg-caption"><h3>${img.title}</h3><div>${img.dataset.model}</div></div>`);
-          $img.after($caption);
-          img.clientWidth // 强制渲染，再加 jg-caption-visible，否则第一次不会有动画效果
+          let content = this.settings.fnCaptionContent(a);
+          $caption = $(`<div class="jg-caption">${content}</div>`);
+          $img.after($caption); // 如果 $caption 属于其它 dom，那么会从其它 dom 树中自动移除
+          $img[0].clientWidth // 强制渲染，再加 jg-caption-visible，否则第一次不会有动画效果
         }
         $caption.addClass('jg-caption-visible');
       }
@@ -969,8 +970,6 @@ JustifiedGallery.prototype.checkSettings = function () {
     throw 'cssAnimation must be a boolean';
   }
 
-  if ($.type(this.settings.captions) !== 'boolean') throw 'captions must be a boolean';
-
   this.checkOrConvertNumber(this.settings, 'imagesAnimationDuration');
   this.checkOrConvertNumber(this.settings, 'refreshTime');
   this.checkOrConvertNumber(this.settings, 'refreshSensitivity');
@@ -1044,7 +1043,7 @@ JustifiedGallery.prototype.defaults = {
   justifyThreshold: 0.90, /* if row width / available space > 0.90 it will be always justified
                            * (i.e. lastRow setting is not considered) */
   waitThumbnailsLoad: true,
-  captions: true,
+  fnCaptionContent: true,
   cssAnimation: true,
   imagesAnimationDuration: 500, // ignored with css animations
   rel: null, // rewrite the rel of each analyzed links
