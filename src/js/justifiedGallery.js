@@ -842,7 +842,6 @@ JustifiedGallery.prototype.init = function () {
       if (content) {
         let $img = $(a).children('img'), $caption = $img.next('.jg-caption');
         if ($caption.length == 0) {
-          let content = this.settings.fnCaptionContent(a);
           $caption = $(`<div class="jg-caption">${content}</div>`);
           $img.after($caption); // 如果 $caption 属于其它 dom，那么会从其它 dom 树中自动移除
           $img[0].clientWidth // 强制渲染，再加 jg-caption-visible，否则第一次不会有动画效果
