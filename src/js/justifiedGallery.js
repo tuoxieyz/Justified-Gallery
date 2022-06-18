@@ -216,40 +216,6 @@ JustifiedGallery.prototype.displayEntry = function ($entry, x, y, imgWidth, imgH
   } else {
     this.showImg($entry);
   }
-
-  this.displayEntryCaption($entry);
-};
-
-/**
- * Display the entry caption. If the caption element doesn't exists, it creates the caption using the 'alt'
- * or the 'title' attributes.
- *
- * @param {jQuery} $entry the entry to process
- */
-JustifiedGallery.prototype.displayEntryCaption = function ($entry) {
-  var $image = this.imgFromEntry($entry);
-  if ($image !== null && this.settings.captions) {
-    var $imgCaption = this.captionFromEntry($entry);
-
-    // Create it if it doesn't exists
-    if ($imgCaption === null) {
-      var caption = $image.attr('alt');
-      if (!this.isValidCaption(caption)) caption = $entry.attr('title');
-      if (this.isValidCaption(caption)) { // Create only we found something
-        $imgCaption = $('<div class="jg-caption">' + caption + '</div>');
-        $entry.append($imgCaption);
-        $entry.data('jg.createdCaption', true);
-      }
-    }
-
-    // Create events (we check again the $imgCaption because it can be still inexistent)
-    if ($imgCaption !== null) {
-      if (!this.settings.cssAnimation) $imgCaption.stop().fadeTo(0, this.settings.captionSettings.nonVisibleOpacity);
-      this.addCaptionEventsHandlers($entry);
-    }
-  } else {
-    this.removeCaptionEventsHandlers($entry);
-  }
 };
 
 /**
@@ -260,70 +226,6 @@ JustifiedGallery.prototype.displayEntryCaption = function ($entry) {
  */
 JustifiedGallery.prototype.isValidCaption = function (caption) {
   return (typeof caption !== 'undefined' && caption.length > 0);
-};
-
-/**
- * The callback for the event 'mouseenter'. It assumes that the event currentTarget is an entry.
- * It shows the caption using jQuery (or using CSS if it is configured so)
- *
- * @param {Event} eventObject the event object
- */
-JustifiedGallery.prototype.onEntryMouseEnterForCaption = function (eventObject) {
-  var $caption = this.captionFromEntry($(eventObject.currentTarget));
-  if (this.settings.cssAnimation) {
-    $caption.addClass('jg-caption-visible');
-  } else {
-    $caption.stop().fadeTo(this.settings.captionSettings.animationDuration,
-      this.settings.captionSettings.visibleOpacity);
-  }
-};
-
-/**
- * The callback for the event 'mouseleave'. It assumes that the event currentTarget is an entry.
- * It hides the caption using jQuery (or using CSS if it is configured so)
- *
- * @param {Event} eventObject the event object
- */
-JustifiedGallery.prototype.onEntryMouseLeaveForCaption = function (eventObject) {
-  var $caption = this.captionFromEntry($(eventObject.currentTarget));
-  if (this.settings.cssAnimation) {
-    $caption.removeClass('jg-caption-visible');
-  } else {
-    $caption.stop().fadeTo(this.settings.captionSettings.animationDuration,
-      this.settings.captionSettings.nonVisibleOpacity);
-  }
-};
-
-/**
- * Add the handlers of the entry for the caption
- *
- * @param $entry the entry to modify
- */
-JustifiedGallery.prototype.addCaptionEventsHandlers = function ($entry) {
-  var captionMouseEvents = $entry.data('jg.captionMouseEvents');
-  if (typeof captionMouseEvents === 'undefined') {
-    captionMouseEvents = {
-      mouseenter: $.proxy(this.onEntryMouseEnterForCaption, this),
-      mouseleave: $.proxy(this.onEntryMouseLeaveForCaption, this)
-    };
-    $entry.on('mouseenter', undefined, undefined, captionMouseEvents.mouseenter);
-    $entry.on('mouseleave', undefined, undefined, captionMouseEvents.mouseleave);
-    $entry.data('jg.captionMouseEvents', captionMouseEvents);
-  }
-};
-
-/**
- * Remove the handlers of the entry for the caption
- *
- * @param $entry the entry to modify
- */
-JustifiedGallery.prototype.removeCaptionEventsHandlers = function ($entry) {
-  var captionMouseEvents = $entry.data('jg.captionMouseEvents');
-  if (typeof captionMouseEvents !== 'undefined') {
-    $entry.off('mouseenter', undefined, captionMouseEvents.mouseenter);
-    $entry.off('mouseleave', undefined, captionMouseEvents.mouseleave);
-    $entry.removeData('jg.captionMouseEvents');
-  }
 };
 
 /**
@@ -738,7 +640,6 @@ JustifiedGallery.prototype.destroy = function () {
     }
 
     // Remove caption
-    this.removeCaptionEventsHandlers($entry);
     var $caption = this.captionFromEntry($entry);
     if ($entry.data('jg.createdCaption')) {
       // remove also the caption element (if created by jg)
@@ -932,6 +833,27 @@ JustifiedGallery.prototype.init = function () {
 
   if (!imagesToLoad && !skippedImages) this.startImgAnalyzer(false);
   this.checkWidth();
+
+  if (this.settings.captions) {
+    // 第 2 个参数并不会导致在每个 a 上注册事件；事件只注册在父元素上，可减少内存损耗
+    this.$gallery.on('mouseenter', 'a', evt => { // 'a > img'        
+      let a = evt.currentTarget, $img = $(a).children('img');
+      if ($img.length > 0) {
+        let img = $img[0];
+        let $caption = $img.next('.jg-caption');
+        if ($caption.length == 0) {
+          $caption = $(`<div class="jg-caption"><h3>${img.title}</h3><div>${img.dataset.model}</div></div>`);
+          $img.after($caption);
+          img.clientWidth // 强制渲染，再加 jg-caption-visible，否则第一次不会有动画效果
+        }
+        $caption.addClass('jg-caption-visible');
+      }
+    });
+    this.$gallery.on('mouseleave', 'a', evt => {
+      let $a = $(evt.currentTarget);
+      $a.children('.jg-caption-visible').removeClass('jg-caption-visible');
+    });
+  }
 };
 
 /**
@@ -1048,19 +970,6 @@ JustifiedGallery.prototype.checkSettings = function () {
   }
 
   if ($.type(this.settings.captions) !== 'boolean') throw 'captions must be a boolean';
-  this.checkOrConvertNumber(this.settings.captionSettings, 'animationDuration');
-
-  this.checkOrConvertNumber(this.settings.captionSettings, 'visibleOpacity');
-  if (this.settings.captionSettings.visibleOpacity < 0 ||
-    this.settings.captionSettings.visibleOpacity > 1) {
-    throw 'captionSettings.visibleOpacity must be in the interval [0, 1]';
-  }
-
-  this.checkOrConvertNumber(this.settings.captionSettings, 'nonVisibleOpacity');
-  if (this.settings.captionSettings.nonVisibleOpacity < 0 ||
-    this.settings.captionSettings.nonVisibleOpacity > 1) {
-    throw 'captionSettings.nonVisibleOpacity must be in the interval [0, 1]';
-  }
 
   this.checkOrConvertNumber(this.settings, 'imagesAnimationDuration');
   this.checkOrConvertNumber(this.settings, 'refreshTime');
@@ -1138,11 +1047,6 @@ JustifiedGallery.prototype.defaults = {
   captions: true,
   cssAnimation: true,
   imagesAnimationDuration: 500, // ignored with css animations
-  captionSettings: { // ignored with css animations
-    animationDuration: 500,
-    visibleOpacity: 0.7,
-    nonVisibleOpacity: 0.0
-  },
   rel: null, // rewrite the rel of each analyzed links
   target: null, // rewrite the target of all links
   extension: /\.[^.\\/]+$/, // regexp to capture the extension of an image
